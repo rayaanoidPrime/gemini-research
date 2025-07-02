@@ -39,11 +39,6 @@ class Configuration(BaseModel):
         metadata={"description": "The maximum number of research loops to perform."},
     )
 
-    enable_snippet: bool = Field(
-        default=False,
-        metadata={"description": "Whether to generate a news-style snippet at the end of research."},
-    )
-
     @classmethod
     def from_runnable_config(
         cls, config: Optional[RunnableConfig] = None

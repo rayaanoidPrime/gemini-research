@@ -9,21 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 // Updated InputFormProps
 interface InputFormProps {
-  onSubmit: (
-    inputValue: string,
-    effort: string,
-    model: string,
-    enableSnippet: boolean
-  ) => void;
+  onSubmit: (inputValue: string, effort: string, model: string) => void;
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
-  enableSnippet: boolean;
-  setEnableSnippet: (val: boolean) => void;
 }
 
 export const InputForm: React.FC<InputFormProps> = ({
@@ -31,8 +23,6 @@ export const InputForm: React.FC<InputFormProps> = ({
   onCancel,
   isLoading,
   hasHistory,
-  enableSnippet,
-  setEnableSnippet,
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
@@ -41,7 +31,7 @@ export const InputForm: React.FC<InputFormProps> = ({
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!internalInputValue.trim()) return;
-    onSubmit(internalInputValue, effort, model, enableSnippet);
+    onSubmit(internalInputValue, effort, model);
     setInternalInputValue("");
   };
 
@@ -171,33 +161,6 @@ export const InputForm: React.FC<InputFormProps> = ({
                 </SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </div>
-        <div className="flex flex-row items-center gap-2 ml-4">
-          <div
-            className={`flex items-center gap-2 px-2 py-1 rounded-lg border transition-colors ${
-              enableSnippet
-                ? "bg-green-900 border-green-600"
-                : "bg-neutral-800 border-neutral-700"
-            }`}
-          >
-            <Switch
-              id="snippet-switch"
-              checked={enableSnippet}
-              onCheckedChange={(checked: boolean) => setEnableSnippet(checked)}
-            />
-            <label
-              htmlFor="snippet-switch"
-              className="text-sm font-semibold select-none cursor-pointer"
-              style={{ color: enableSnippet ? "#4ade80" : "#f87171" }}
-            >
-              Snippet{" "}
-              {enableSnippet ? (
-                <span className="ml-1 font-bold text-green-400">ON</span>
-              ) : (
-                <span className="ml-1 font-bold text-red-400">OFF</span>
-              )}
-            </label>
           </div>
         </div>
         {hasHistory && (

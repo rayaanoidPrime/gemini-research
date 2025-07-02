@@ -94,7 +94,6 @@ User Context:
 
 Summaries:
 {summaries}"""
-
 snippet_instructions = """Generate a brief, news-style snippet summarizing the research output below. The snippet should be concise, highlight key findings, market movements, and important news, and be written in the style of the following example:
 
 Example:
@@ -110,3 +109,4 @@ Instructions:
 Research Output:
 {final_answer}
 """
+

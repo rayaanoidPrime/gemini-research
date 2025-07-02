@@ -8,16 +8,12 @@ interface WelcomeScreenProps {
   ) => void;
   onCancel: () => void;
   isLoading: boolean;
-  enableSnippet: boolean;
-  setEnableSnippet: (val: boolean) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   handleSubmit,
   onCancel,
   isLoading,
-  enableSnippet,
-  setEnableSnippet,
 }) => (
   <div className="h-full flex flex-col items-center justify-center text-center px-4 flex-1 w-full max-w-3xl mx-auto gap-4">
     <div>
@@ -34,8 +30,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         isLoading={isLoading}
         onCancel={onCancel}
         hasHistory={false}
-        enableSnippet={enableSnippet}
-        setEnableSnippet={setEnableSnippet}
       />
     </div>
     <p className="text-xs text-neutral-500">

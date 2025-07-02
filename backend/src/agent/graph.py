@@ -251,34 +251,22 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     )
     result = llm.invoke(formatted_prompt)
 
+    # Create a variable for the processed content
+    processed_content = result.content
+
     # Replace the short urls with the original urls and add all used urls to the sources_gathered
     unique_sources = []
     for source in state["sources_gathered"]:
-        if source["short_url"] in result.content:
-            result.content = result.content.replace(
+        if source["short_url"] in processed_content:
+            processed_content = processed_content.replace(
                 source["short_url"], source["value"]
             )
             unique_sources.append(source)
 
-    # Generate snippet if enabled
-    snippet = None
-    if getattr(configurable, "enable_snippet", False):
-        snippet_prompt = snippet_instructions.format(final_answer=result.content)
-        snippet_llm = ChatGoogleGenerativeAI(
-            model=reasoning_model,
-            temperature=0,
-            max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        snippet_result = snippet_llm.invoke(snippet_prompt)
-        snippet = snippet_result.content.strip()
-
     output = {
-        # Attach snippet to the AIMessage if generated
         "messages": [
             AIMessage(
-                content=result.content,
-                additional_kwargs={"snippet": snippet} if snippet else {},
+                content=processed_content,
             )
         ],
         "sources_gathered": unique_sources,

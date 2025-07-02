@@ -16,13 +16,11 @@ export default function App() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [enableSnippet, setEnableSnippet] = useState(false);
   const thread = useStream<{
     messages: Message[];
     initial_search_query_count: number;
     max_research_loops: number;
     reasoning_model: string;
-    enable_snippet: boolean;
   }>({
     apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
@@ -150,10 +148,9 @@ export default function App() {
         initial_search_query_count: initial_search_query_count,
         max_research_loops: max_research_loops,
         reasoning_model: model,
-        enable_snippet: enableSnippet,
       });
     },
-    [thread, enableSnippet]
+    [thread]
   );
 
   const handleCancel = useCallback(() => {
@@ -169,8 +166,6 @@ export default function App() {
             handleSubmit={handleSubmit}
             isLoading={thread.isLoading}
             onCancel={handleCancel}
-            enableSnippet={enableSnippet}
-            setEnableSnippet={setEnableSnippet}
           />
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full">
@@ -195,8 +190,6 @@ export default function App() {
             onCancel={handleCancel}
             liveActivityEvents={processedEventsTimeline}
             historicalActivities={historicalActivities}
-            enableSnippet={enableSnippet}
-            setEnableSnippet={setEnableSnippet}
           />
         )}
       </main>

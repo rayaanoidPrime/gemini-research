@@ -1,7 +1,7 @@
 import type React from "react";
 import type { Message } from "@langchain/langgraph-sdk";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Copy, CopyCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
 import { useState, ReactNode } from "react";
@@ -226,29 +226,10 @@ interface ChatMessagesViewProps {
   messages: Message[];
   isLoading: boolean;
   scrollAreaRef: React.RefObject<HTMLDivElement | null>;
-  onSubmit: (
-    inputValue: string,
-    effort: string,
-    model: string,
-    enableSnippet: boolean
-  ) => void;
+  onSubmit: (inputValue: string, effort: string, model: string) => void;
   onCancel: () => void;
   liveActivityEvents: ProcessedEvent[];
   historicalActivities: Record<string, ProcessedEvent[]>;
-  enableSnippet: boolean;
-  setEnableSnippet: (val: boolean) => void;
-}
-
-function hasSnippet(
-  message: any
-): message is Message & { additional_kwargs: { snippet: string } } {
-  return (
-    message.additional_kwargs &&
-    typeof message.additional_kwargs === "object" &&
-    "snippet" in message.additional_kwargs &&
-    typeof (message.additional_kwargs as any).snippet === "string" &&
-    (message.additional_kwargs as any).snippet.length > 0
-  );
 }
 
 export function ChatMessagesView({
@@ -259,11 +240,8 @@ export function ChatMessagesView({
   onCancel,
   liveActivityEvents,
   historicalActivities,
-  enableSnippet,
-  setEnableSnippet,
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [snippetOpen, setSnippetOpen] = useState(false);
 
   const handleCopy = async (text: string, messageId: string) => {
     try {
@@ -305,26 +283,6 @@ export function ChatMessagesView({
                     />
                   )}
                 </div>
-                {isLast && message.type === "ai" && hasSnippet(message) && (
-                  <div className="mt-2">
-                    <div
-                      className="flex items-center cursor-pointer select-none text-sm text-neutral-200 gap-2 bg-neutral-700 rounded-lg px-3 py-2 hover:bg-neutral-600 transition"
-                      onClick={() => setSnippetOpen((open) => !open)}
-                    >
-                      <span>Snippet</span>
-                      {snippetOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </div>
-                    {snippetOpen && (
-                      <div className="bg-neutral-800 border border-neutral-700 rounded-lg mt-1 p-3 text-neutral-100 text-sm shadow">
-                        {message.additional_kwargs.snippet}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -358,8 +316,6 @@ export function ChatMessagesView({
         isLoading={isLoading}
         onCancel={onCancel}
         hasHistory={messages.length > 0}
-        enableSnippet={enableSnippet}
-        setEnableSnippet={setEnableSnippet}
       />
     </div>
   );
