@@ -240,13 +240,14 @@ interface ChatMessagesViewProps {
 }
 
 function hasSnippet(
-  message: unknown
-): message is Message & { snippet: string } {
+  message: any
+): message is Message & { additional_kwargs: { snippet: string } } {
   return (
-    typeof message === "object" &&
-    message !== null &&
-    "snippet" in message &&
-    typeof (message as Record<string, unknown>).snippet === "string"
+    message.additional_kwargs &&
+    typeof message.additional_kwargs === "object" &&
+    "snippet" in message.additional_kwargs &&
+    typeof (message.additional_kwargs as any).snippet === "string" &&
+    (message.additional_kwargs as any).snippet.length > 0
   );
 }
 
@@ -319,7 +320,7 @@ export function ChatMessagesView({
                     </div>
                     {snippetOpen && (
                       <div className="bg-neutral-800 border border-neutral-700 rounded-lg mt-1 p-3 text-neutral-100 text-sm shadow">
-                        {message.snippet}
+                        {message.additional_kwargs.snippet}
                       </div>
                     )}
                   </div>
