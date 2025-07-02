@@ -94,3 +94,19 @@ User Context:
 
 Summaries:
 {summaries}"""
+
+snippet_instructions = """Generate a brief, news-style snippet summarizing the research output below. The snippet should be concise, highlight key findings, market movements, and important news, and be written in the style of the following example:
+
+Example:
+Snippet 1- Nifty Pre Open- down 152 pts. Key news- ICICI Bank – Posted Q3 mixed, business momentum weakens; return ratios remain steady. AU Small Finance Bank - FY25 loan growth guidance cut to 20 pct, FY26 growth guidance withheld. Macrotech - Q3 pre-sales jumped 32 pct YoY, debt reduced by Rs. 6.10 bn. Yes Bank - Retail book declined by 3.2 pct, NIM flat YoY and QoQ at 2.4 pct. DLF - Posts best-ever quarterly new sales booking collections up 23 pct YoY. CreditAccess - FY25 guidance revised lower for the second time in 3 months, NIM at 6-quarter low. AB Real Estate - Arm signs JV agreement with Mitsubishi Estate for a project, investment at Rs. 5.6 bn. IDFC First - Q3 below poll, slippage ratio is the highest in 11 quarters. EMS - EBITDA jumped 52 pct, margin at 29 pct vs 23.5 pct YoY Trident - EBITDA declined 18.8 pct, margin at 12.8 pct vs 14.3 pct YoY. Indigo - Ex-forex, earnings in-line, Q4 ASK guidance of 20 pct YoY. NTPC Green - EBITDA declined 2.3 pct, margin at 83.5 pct vs 88.9 pct YoY. JK Cement - Q3 sales volumes up 5 pct, to acquire 60 pct stake in Saifco Cement for Rs. 1.74 bn. NTPC - Muted Q3, capacity addition slow. Results Today – Tata Steel, Bajaj Housing Fin
+
+Instructions:
+- Write in a similar style as the example above.
+- Focus on the most important findings, news, and market movements from the research output.
+- Be concise and use a news-brief format.
+- Do not include citations or URLs.
+- Output only the snippet text.
+
+Research Output:
+{final_answer}
+"""

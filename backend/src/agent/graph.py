@@ -22,6 +22,7 @@ from agent.prompts import (
     web_searcher_instructions,
     reflection_instructions,
     answer_instructions,
+    snippet_instructions,
 )
 from langchain_google_genai import ChatGoogleGenerativeAI
 from agent.utils import (
@@ -259,10 +260,31 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             )
             unique_sources.append(source)
 
-    return {
-        "messages": [AIMessage(content=result.content)],
+    # Generate snippet if enabled
+    snippet = None
+    if getattr(configurable, "enable_snippet", False):
+        snippet_prompt = snippet_instructions.format(final_answer=result.content)
+        snippet_llm = ChatGoogleGenerativeAI(
+            model=reasoning_model,
+            temperature=0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        snippet_result = snippet_llm.invoke(snippet_prompt)
+        snippet = snippet_result.content.strip()
+
+    output = {
+        # Attach snippet to the AIMessage if generated
+        "messages": [
+            AIMessage(
+                content=result.content,
+                additional_kwargs={"snippet": snippet} if snippet else {},
+            )
+        ],
         "sources_gathered": unique_sources,
     }
+
+    return output
 
 
 # Create our Agent Graph
