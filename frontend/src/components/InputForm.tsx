@@ -12,7 +12,12 @@ import {
 
 // Updated InputFormProps
 interface InputFormProps {
-  onSubmit: (inputValue: string, effort: string, model: string) => void;
+  onSubmit: (
+    inputValue: string,
+    effort: string,
+    model: string,
+    format: string
+  ) => void;
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
@@ -27,11 +32,13 @@ export const InputForm: React.FC<InputFormProps> = ({
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
   const [model, setModel] = useState("gemini-2.5-flash-preview-04-17");
+  const [format, setFormat] = useState("detailed");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!internalInputValue.trim()) return;
-    onSubmit(internalInputValue, effort, model);
+    console.log("InputForm submitting with format:", format);
+    onSubmit(internalInputValue, effort, model, format);
     setInternalInputValue("");
   };
 

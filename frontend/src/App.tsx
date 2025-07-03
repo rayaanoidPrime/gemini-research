@@ -21,6 +21,7 @@ export default function App() {
     initial_search_query_count: number;
     max_research_loops: number;
     reasoning_model: string;
+    output_format: string;
   }>({
     apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
@@ -109,7 +110,12 @@ export default function App() {
   }, [thread.messages, thread.isLoading, processedEventsTimeline]);
 
   const handleSubmit = useCallback(
-    (submittedInputValue: string, effort: string, model: string) => {
+    (
+      submittedInputValue: string,
+      effort: string,
+      model: string,
+      format: string
+    ) => {
       if (!submittedInputValue.trim()) return;
       setProcessedEventsTimeline([]);
       hasFinalizeEventOccurredRef.current = false;
@@ -143,12 +149,18 @@ export default function App() {
           id: Date.now().toString(),
         },
       ];
-      thread.submit({
+
+      const submissionData = {
         messages: newMessages,
         initial_search_query_count: initial_search_query_count,
         max_research_loops: max_research_loops,
         reasoning_model: model,
-      });
+        output_format: format,
+      };
+
+      console.log("Submitting this object to backend:", submissionData);
+
+      thread.submit(submissionData);
     },
     [thread]
   );

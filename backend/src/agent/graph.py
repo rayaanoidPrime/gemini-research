@@ -1,4 +1,5 @@
 import os
+import logging
 
 from agent.tools_and_schemas import SearchQueryList, Reflection
 from dotenv import load_dotenv
@@ -34,6 +35,10 @@ from agent.utils import (
 
 load_dotenv()
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
@@ -42,24 +47,44 @@ genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 # Nodes
-def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
-    """LangGraph node that generates search queries based on the User's question.
-
-    Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
-    the User's question.
-
-    Args:
-        state: Current graph state containing the User's question
-        config: Configuration for the runnable, including LLM provider settings
-
-    Returns:
-        Dictionary with state update, including search_query key containing the generated queries
+def start_research(state: OverallState, config: RunnableConfig) -> dict:
+    """
+    Read initial configuration and populate the state.
+    This is the new entry point for the graph.
     """
     configurable = Configuration.from_runnable_config(config)
+    
+    # Plumb all relevant config values into the state
+    state_update = {
+        "initial_search_query_count": configurable.number_of_initial_queries,
+        "max_research_loops": configurable.max_research_loops,
+        "reasoning_model": configurable.answer_model, # Using answer_model as default
+        "output_format": config.get("configurable", {}).get("output_format", "detailed"),
+    }
+    
+    # Override with any specific values passed in the invoke/submit call
+    # This ensures values from the frontend take precedence
+    if state.get("initial_search_query_count"):
+        state_update["initial_search_query_count"] = state["initial_search_query_count"]
+    if state.get("max_research_loops"):
+        state_update["max_research_loops"] = state["max_research_loops"]
+    if state.get("reasoning_model"):
+        state_update["reasoning_model"] = state["reasoning_model"]
 
-    # check for custom initial search query count
-    if state.get("initial_search_query_count") is None:
-        state["initial_search_query_count"] = configurable.number_of_initial_queries
+    # Debug print to confirm
+    print(f"--- Initializing state with: {state_update} ---")
+    
+    return state_update
+
+
+def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
+    """LangGraph node that generates search queries based on the User's question."""
+    
+    # Configurable is now only used for the model name
+    configurable = Configuration.from_runnable_config(config)
+
+    # The initial query count is now already in the state
+    initial_query_count = state.get("initial_search_query_count", 3)
 
     # init Gemini 2.0 Flash
     llm = ChatGoogleGenerativeAI(
@@ -75,7 +100,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     formatted_prompt = query_writer_instructions.format(
         current_date=current_date,
         research_topic=get_research_topic(state["messages"]),
-        number_queries=state["initial_search_query_count"],
+        number_queries=initial_query_count,
     )
     # Generate the search queries
     result = structured_llm.invoke(formatted_prompt)
@@ -87,6 +112,7 @@ def continue_to_web_research(state: QueryGenerationState):
 
     This is used to spawn n number of web research nodes, one for each search query.
     """
+    logger.info("[continue_to_web_research] Entry")
     return [
         Send("web_research", {"search_query": search_query, "id": int(idx)})
         for idx, search_query in enumerate(state["search_query"])
@@ -105,6 +131,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     Returns:
         Dictionary with state update, including sources_gathered, research_loop_count, and web_research_results
     """
+    logger.info("[web_research] Entry")
     # Configure
     configurable = Configuration.from_runnable_config(config)
     formatted_prompt = web_searcher_instructions.format(
@@ -130,6 +157,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     modified_text = insert_citation_markers(response.text, citations)
     sources_gathered = [item for citation in citations for item in citation["segments"]]
 
+    logger.info("[web_research] Output: sources_gathered=%s, web_research_result=%s", sources_gathered, modified_text)
     return {
         "sources_gathered": sources_gathered,
         "search_query": [state["search_query"]],
@@ -151,6 +179,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     Returns:
         Dictionary with state update, including search_query key containing the generated follow-up query
     """
+    logger.info("[reflection] Entry")
     configurable = Configuration.from_runnable_config(config)
     # Increment the research loop count and get the reasoning model
     state["research_loop_count"] = state.get("research_loop_count", 0) + 1
@@ -171,7 +200,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
         api_key=os.getenv("GEMINI_API_KEY"),
     )
     result = llm.with_structured_output(Reflection).invoke(formatted_prompt)
-
+    logger.info("[reflection] Output: is_sufficient=%s, knowledge_gap=%s, follow_up_queries=%s", result.is_sufficient, result.knowledge_gap, result.follow_up_queries)
     return {
         "is_sufficient": result.is_sufficient,
         "knowledge_gap": result.knowledge_gap,
@@ -197,6 +226,7 @@ def evaluate_research(
     Returns:
         String literal indicating the next node to visit ("web_research" or "finalize_summary")
     """
+    logger.info("[evaluate_research] Entry")
     configurable = Configuration.from_runnable_config(config)
     max_research_loops = (
         state.get("max_research_loops")
@@ -204,6 +234,7 @@ def evaluate_research(
         else configurable.max_research_loops
     )
     if state["is_sufficient"] or state["research_loop_count"] >= max_research_loops:
+        logger.info("[evaluate_research] Decision: finalize_answer")
         return "finalize_answer"
     else:
         return [
@@ -217,6 +248,15 @@ def evaluate_research(
             for idx, follow_up_query in enumerate(state["follow_up_queries"])
         ]
 
+# def should_generate_snippet(state: OverallState) -> str:
+#     """Determines whether to generate a snippet or end."""
+#     # Add this print statement for easy debugging
+#     print(f"--- Deciding on output format. Found: {state.get('output_format')} ---")
+#     if state.get("initial_search_query_count") < 3:
+#         return "generate_snippet"
+#     else:
+#         logger.info("[should_generate_snippet] Decision: END")
+#         return "__end__" # Return the string "__end__"
 
 def finalize_answer(state: OverallState, config: RunnableConfig):
     """LangGraph node that finalizes the research summary.
@@ -231,6 +271,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     Returns:
         Dictionary with state update, including running_summary key containing the formatted final summary with sources
     """
+    logger.info("[finalize_answer] Entry")
     configurable = Configuration.from_runnable_config(config)
     reasoning_model = state.get("reasoning_model") or configurable.answer_model
 
@@ -263,6 +304,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             )
             unique_sources.append(source)
 
+    logger.info("[finalize_answer] Output: processed_content=%s, unique_sources=%s", processed_content, unique_sources)
     output = {
         "messages": [
             AIMessage(
@@ -275,29 +317,60 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     return output
 
 
+def generate_snippet(state: OverallState, config: RunnableConfig):
+    logger.info("[generate_snippet] Entry")
+    configurable = Configuration.from_runnable_config(config)
+
+    # The detailed answer is in the last message
+    final_answer = state["messages"][-1].content
+
+    # Format the prompt
+    formatted_prompt = snippet_instructions.format(final_answer=final_answer)
+
+    # Use a fast model for summarization
+    llm = ChatGoogleGenerativeAI(
+        model=configurable.query_generator_model,
+        temperature=0,
+        max_retries=2,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+    snippet = llm.invoke(formatted_prompt).content
+    logger.info("[generate_snippet] Output: snippet=%s", snippet)
+
+    # Create a new message with the snippet content, replacing the detailed one
+    # Note: We are not preserving sources here as snippets don't have them.
+    final_snippet_message = AIMessage(content=snippet)
+
+    return {"messages": [final_snippet_message]}
+
+
 # Create our Agent Graph
 builder = StateGraph(OverallState, config_schema=Configuration)
 
 # Define the nodes we will cycle between
+builder.add_node("start_research", start_research)
 builder.add_node("generate_query", generate_query)
 builder.add_node("web_research", web_research)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
+builder.add_node("generate_snippet", generate_snippet)
 
-# Set the entrypoint as `generate_query`
-# This means that this node is the first one called
-builder.add_edge(START, "generate_query")
-# Add conditional edge to continue with search queries in a parallel branch
+# --- UPDATE THE ENTRYPOINT ---
+# Set the entrypoint to our new start_research node
+builder.add_edge(START, "start_research")
+# Now, start_research flows into generate_query
+builder.add_edge("start_research", "generate_query")
+
+# The rest of the graph wiring remains the same
 builder.add_conditional_edges(
     "generate_query", continue_to_web_research, ["web_research"]
 )
-# Reflect on the web research
 builder.add_edge("web_research", "reflection")
-# Evaluate the research
 builder.add_conditional_edges(
     "reflection", evaluate_research, ["web_research", "finalize_answer"]
 )
-# Finalize the answer
-builder.add_edge("finalize_answer", END)
+# always generate a snippet after finalizing the answer
+builder.add_edge("finalize_answer", "generate_snippet")
+builder.add_edge("generate_snippet", END)
 
 graph = builder.compile(name="pro-search-agent")
